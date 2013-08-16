@@ -1,0 +1,857 @@
+﻿<!DOCTYPE html>
+<html>
+	<head>
+		<title>SHAKE YOUR PHONE!</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #000;
+				color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: center;
+				z-index: 100;
+				display:block;
+			}
+			#info a { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer; font-size: 15px; text-decoration:none;}
+
+			#iphone { 
+				margin-left : 90px;
+				margin-top: 50px;
+			}	
+
+			#loading {
+				position : absolute;
+				top :  50%;
+				left :  50%;
+			}
+
+			 #loading_message{
+				position : absolute;
+				top : 30%;
+				width: 100%;
+				display :none;
+				color : rgb(122, 120, 120);
+				text-decoration :none;
+				text-align:center;
+			}
+
+			a#count_down{ display :none; font-size:200px; color:white;}
+				
+		
+		</style>
+
+		
+		<!-- jquery cdn 부분 -->
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+		<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+		<!-- 부트스트랩 cdn 부분 -->
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.0.0-rc1/css/bootstrap.min.css">
+    <!-- Latest compiled and minified JavaScript -->
+		<script src="http://netdna.bootstrapcdn.com/bootstrap/3.0.0-rc1/js/bootstrap.min.js"></script>
+		<script src="lib/js/three.min.js"></script>
+		<script src="lib/js/UnpackDepthRGBAShader.js"></script>
+		<script src="lib/js/Detector.js"></script>
+		<script src="lib/js/stats.min.js"></script>
+		<script src="lib/js/helvetiker_bold.typeface.js"></script>
+		<script src="lib/js/spin.min.js"></script>
+		<!--<script src="/socket.io/socket.io.js"></script> -->
+		<script src="http://localhost:8001/socket"></script>
+		<script>
+			var opts = {
+				lines : 13,length:20,width:9,radius:30
+				,corners:1.0,rotate:0,trail:60,speed:1.0,direction:1,
+			 	trail: 57, // Afterglow percentage
+				shadow: false, // Whether to render a shadow
+				hwaccel: false, // Whether to use hardware acceleration
+				className: 'spinner', // The CSS class to assign to the spinner
+				zIndex: 2e9, // The z-index (defaults to 2000000000)
+				top: 'auto', // Top position relative to parent in px
+				left: 'auto' // Left position relative to parent in px
+			  }
+				
+				spinner = new Spinner().spin();
+		</script>
+		<script src="lib/js/spinplay.js"></script> <!-- 스핀js 플러긴화 -->
+
+
+	</head>
+
+	  <div id="info">
+			<a id="count_down">GET READY</a>
+		</div>
+			<a id="loading_message">인터넷 상황에 따라 버퍼가 있을 수 있습니다</a>
+		<div id="loading"></div>
+
+
+	<body>
+
+  <!-- Button trigger modal -->
+  <a data-toggle="modal" href="#myModal" id="startmodal" class="btn btn-primary btn-lg" style="display:none;">Launch demo modal</a>
+
+  <!-- Modal -->
+  <div class="modal fade s" id="myModal">
+    <div class="modal-dialog">
+      <div class="modal-content" id="startcont">
+        <div class="modal-header">
+          <h4 class="modal-title">CONNECTED!</h4>
+        </div>
+        <div class="modal-body" id="startcontents">
+         
+
+					게임이 시작되면 스마트폰을 상하로 흔드세요
+
+						<img id="iphone" src="lib/image/iphone.jpg" style="width:30%;">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" id="quit" data-dismiss="modal">QUIT</button>
+          <button type="button" class="btn btn-primary" id="start">START</button>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+
+
+
+
+		<!-- 부트스트랩 end 모달부분 -->
+  <!-- Button trigger modal -->
+  <a data-toggle="modal" href=".e" id="end_modal" class="btn btn-primary btn-lg" style="display:none;">End race!</a>
+
+  <!-- Modal -->
+  <div class="modal fade e" id="myModal">
+    <div class="modal-dialog">
+      <div class="modal-content" id="end_mcont">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+          <h4 class="modal-title" id="end_ttl">RECORD BOARD</h4>
+        </div>
+        <div id="end_body" class="modal-body">
+          ...
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" id="quits" data-dismiss="modal">QUIT</button>
+          <button type="button" id="restart" class="btn btn-primary">RESTART</button>
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+	</div><!-- /.modal -->
+
+	
+	
+	
+	 <script>
+
+		var serverUrl = 'http://' + location.host;
+		var socket = io.connect(serverUrl);
+		var horse_power = 0;
+		var session_id;
+		var isFinish = "no"
+		var go =0
+
+		// 피시 화면에 레디 화면 보여주기	
+		socket.on('connected', function(data){
+
+			session_id = socket.socket.sessionid
+
+			console.log("핸드쉐이크성공(pc클라이언트)");
+
+			socket.emit("gimme-nick", session_id);
+
+			socket.on('pc-success', function(){
+
+				socket.emit('thankyou', isFinish)
+			
+			});
+
+			socket.on('un-normal-access' ,function(){
+
+				alert("먼저 폰으로 연동해주세요!");
+				location.href='http://' + location.host + '/opening';	
+
+			});
+
+		
+		// 서버로부터 마력을 전송받는다	
+		socket.on('letsgo', function(data){
+
+				//console.log("서버로부터 시작개시 메시지를 받았다");
+				//console.log(data);
+		  	go = 	data.speed 
+
+				jQuery('button#quits').bind("click",function(){
+
+					socket.emit("please-stop");
+
+				});	
+			
+			});
+
+
+
+			socket.on('dis', function(data){
+
+
+				console.log("대기실로 이동합니다");
+
+					alert("DISCONNECTED! 대기실로 이동합니다");
+
+					location.href='http://' + location.host + '/opening'
+      });
+
+		 });
+
+    byProperty = function(prop) {
+    return function(a,b) {
+      if (typeof a[prop] == "number") {
+		    return (a[prop] - b[prop]);} 
+	      else {
+           return ((a[prop] < b[prop]) ? -1 : ((a[prop] > b[prop]) ? 1 : 0));
+        }
+      };
+		};
+
+	
+  ////////////////////////////////////////////////
+	///////////////주요변수선언/////////////////////
+	////////////////////////////////////////////////
+
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var SHADOW_MAP_WIDTH = 2048, SHADOW_MAP_HEIGHT = 1024;
+
+			var MARGIN = 100;
+
+			var SCREEN_WIDTH = window.innerWidth;
+			var SCREEN_HEIGHT = window.innerHeight;
+			var FLOOR = -250;
+
+			var camera, controls, scene, renderer;
+			var container, stats;
+
+			var NEAR = 5, FAR = 3000;
+
+			var sceneHUD, cameraOrtho, hudMaterial;
+
+			var morph, morphs = [];
+
+			var light;
+
+			var clock = new THREE.Clock();
+
+			var timer = new THREE.Clock(false); // 타이머
+
+
+			camera = new THREE.PerspectiveCamera( 100, SCREEN_WIDTH / SCREEN_HEIGHT, NEAR, FAR );
+
+
+	////////////////////////////////////////////////
+	///////////////시작부분제어/////////////////////
+	////////////////////////////////////////////////
+
+	// 끝난후
+	
+		
+		jQuery('#restart').bind("click", function(){
+
+			jQuery(window).fadeOut();
+			
+			location.reload()
+
+			setTimeout(function() { jQuery(window).fadeIn()}, 2000);
+		
+		});
+
+	
+
+		// 종료버튼 - 오프닝 페이지로 이동
+		jQuery('button#quit').bind("click",function(){
+
+			location.href='http://' + location.host + '/opening';
+
+		});
+		jQuery('button#quits').bind("click",function(){
+
+			location.href='http://' + location.host + '/opening';
+
+		});
+		
+			
+
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				// SCENE
+
+				scene = new THREE.Scene();
+				scene.fog = new THREE.Fog( 0xcce0ff, 200, 3000 );
+
+				// lights
+
+				var light, materials;
+
+				scene.add( new THREE.AmbientLight( 0x666666 ) );
+
+				light = new THREE.DirectionalLight( 0xdfebff, 1.75 );
+				light.position.set( 50, 200, 100 );
+				light.position.multiplyScalar( 1.3 );
+
+				light.castShadow = true;
+				//light.shadowCameraVisible = true;
+
+				light.shadowMapWidth = 2048;
+				light.shadowMapHeight = 2048;
+
+				var d = 4000;
+
+				light.shadowCameraLeft = -d;
+				light.shadowCameraRight = d;
+				light.shadowCameraTop = d;
+				light.shadowCameraBottom = -d;
+
+				light.shadowCameraFar = 1000;
+				light.shadowDarkness = 0.5;
+
+				scene.add( light );
+
+				light = new THREE.DirectionalLight( 0x3dff0c, 0.35 );
+				light.position.set( 0, -1, 0 );
+
+				scene.add( light );
+
+				createHUD();
+				createScene();
+
+				// RENDERER
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setClearColor( scene.fog.color );
+
+				container.appendChild( renderer.domElement );
+
+				renderer.gammaInput = true;
+				renderer.gammaOutput = true;
+				renderer.physicallyBasedShading = true;
+
+				renderer.shadowMapEnabled = true;
+				renderer.shadowMapType = THREE.PCFShadowMap;
+
+				// STATS
+
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+				stats.domElement.style.zIndex = 100;
+				//container.appendChild( stats.domElement );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				SCREEN_WIDTH = window.innerWidth;
+				SCREEN_HEIGHT = window.innerHeight;
+
+				camera.aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+
+
+			}
+
+			function createHUD() {
+
+				cameraOrtho = new THREE.OrthographicCamera( SCREEN_WIDTH / - 2, SCREEN_WIDTH / 2,  SCREEN_HEIGHT / 2, SCREEN_HEIGHT / - 2, -10, 1000 );
+				cameraOrtho.position.z = 10;
+
+				var shader = THREE.UnpackDepthRGBAShader;
+				var uniforms = new THREE.UniformsUtils.clone( shader.uniforms );
+
+				hudMaterial = new THREE.ShaderMaterial( { vertexShader: shader.vertexShader, fragmentShader: shader.fragmentShader, uniforms: uniforms } );
+
+				var hudGeo = new THREE.PlaneGeometry( SHADOW_MAP_WIDTH / 2, SHADOW_MAP_HEIGHT / 2 );
+				var hudMesh = new THREE.Mesh( hudGeo, hudMaterial );
+				hudMesh.position.x = ( SCREEN_WIDTH - SHADOW_MAP_WIDTH / 2 ) * -0.5;
+				hudMesh.position.y = ( SCREEN_HEIGHT - SHADOW_MAP_HEIGHT / 2 ) * -0.5;
+				hudMesh.rotation.x = Math.PI / 2;
+
+				sceneHUD = new THREE.Scene();
+				sceneHUD.add( hudMesh );
+
+				cameraOrtho.lookAt( sceneHUD.position );
+
+			}
+
+
+
+			function createScene() {
+
+				// GROUND
+
+				var initColor = new THREE.Color( 0x497f13 );
+				var initTexture = THREE.ImageUtils.generateDataTexture( 10, 10, initColor );
+
+				var groundMaterial = new THREE.MeshPhongMaterial( { color: 0xffffff, specular: 0x111111, map: initTexture } );
+				var groundTexture = THREE.ImageUtils.loadTexture( "lib/textures/terrain/grasslight-big.jpg", undefined, function() { groundMaterial.map = groundTexture } );
+				groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
+				groundTexture.repeat.set( 50, 50 );
+				groundTexture.anisotropy = 16
+				var mesh = new THREE.Mesh( new THREE.PlaneGeometry( 40000, 40000), groundMaterial );
+				mesh.position.y = -250;
+				mesh.rotation.x = - Math.PI / 2;
+				mesh.receiveShadow = true;
+				scene.add( mesh );
+
+
+				// TEXT
+
+				var textGeo = new THREE.TextGeometry( "FINISH", { 
+					size: 600,
+					height: 100,
+					curveSegments: 120,
+
+					font: "helvetiker",
+					weight: "bold",
+					style: "normal",
+
+					bevelThickness: 2,
+					bevelSize: 5,
+					bevelEnabled: true
+
+					});
+					
+				textGeo.computeBoundingBox();
+
+				var textMaterial = new THREE.MeshPhongMaterial( { color: 0xff0000, specular: 0xffffff, ambient: 0xaa0000 } );
+
+				var finish = new THREE.Mesh( textGeo, textMaterial );
+				finish.position.x = 15000
+				finish.position.y = FLOOR + 800;
+				finish.position.z = 50;
+
+				finish.castShadow = true;
+				finish.receiveShadow = true;
+				finish.lookAt( camera.position );
+
+				//scene.add( finish );
+
+		
+
+				// MORPHS
+
+				function addMorph( geometry, speed, duration, x, y, z, fudgeColor,ids,lap ) {
+
+					var material;
+			
+					if ( fudgeColor == "random" ) {
+						
+						material = new THREE.MeshLambertMaterial( { color: 0xffaa55, morphTargets: true, vertexColors: THREE.FaceColors } );
+						material.color.offsetHSL( 0, Math.random() * 0.5 - 0.25, Math.random() * 0.5 - 0.25 );
+						material.ambient = material.color;
+					}
+
+					if(fudgeColor == "white"){
+						material = new THREE.MeshLambertMaterial( { morphTargets: true} );
+						material.ambient = material.color
+					}
+			
+					var meshAnim = new THREE.MorphAnimMesh( geometry, material );
+
+					meshAnim.speed = speed;
+					meshAnim.duration = duration;
+					meshAnim.ids = ids
+					meshAnim.time = 600 * Math.random();
+
+					meshAnim.position.set( x, y, z );
+					meshAnim.rotation.y = Math.PI/2;
+
+					meshAnim.castShadow = true;
+					meshAnim.receiveShadow = true;
+
+					scene.add( meshAnim );
+
+					morphs.push( meshAnim );
+
+				}
+
+				function morphColorsToFaceColors( geometry ) {
+
+					if ( geometry.morphColors && geometry.morphColors.length ) {
+
+						var colorMap = geometry.morphColors[ 0 ];
+
+						for ( var i = 0; i < colorMap.colors.length; i ++ ) {
+
+							geometry.faces[ i ].color = colorMap.colors[ i ];
+
+						}
+
+					}
+
+				}
+
+				var loader = new THREE.JSONLoader();
+
+				loader.load( "models/animated/horse.js", function( geometry ) {
+
+					morphColorsToFaceColors( geometry );
+
+					addMorph( geometry, 300, 500, 0, FLOOR, 300, "random","바람돌이",0);
+					addMorph( geometry, 400, 400, 0, FLOOR, 500, "white","영웅",0 );
+					addMorph( geometry, 0, 500, 0, FLOOR, 700, "random","YOU",0 );
+					addMorph( geometry, 600, 500, 0, FLOOR, 900, "random","킬러",0 );
+					addMorph( geometry, 700, 700, 0, FLOOR, 1100, "random","시라소니",0 );
+					addMorph( geometry, 800, 800, 0, FLOOR, 1300, "random","페르소나",0 );
+
+
+
+				} );
+
+				
+			}
+
+			//
+
+	function folowCam(obj){
+
+	
+	    var posi = new THREE.Vector3(obj.position.x+500,obj.position.y+300,obj.position.z)
+			
+			camera.position.set(obj.position.x-100,obj.position.y+300,obj.position.z);
+			
+			camera.lookAt(posi);
+
+	}
+
+				
+			
+	function animate() {
+
+		
+		anime = requestAnimationFrame( animate );
+
+		folowCam(morphs[2]);
+		
+		stats.update();
+		
+		render();
+		
+		for ( var q = 0, xleng = morphs.length; q <xleng; q++ ) {
+
+		getRecord(morphs[q])
+		
+		if(morphs[q].position.x > 15000) {
+
+				var nowspeed = slowstop(morph);
+					
+					slowstop(morph);
+
+					if(nowspeed === 0){
+
+					morph.speed = 0;
+
+					}
+
+				}
+
+
+		// 나의 말이 도착점에 들어왔을떄
+
+				if(morphs[2].position.x > 15000) {
+
+						  //cancelAnimationFrame( anime );
+
+						end();
+		
+					    isFinish = "yes";
+
+		          socket.emit('thankyou', isFinish);
+
+						
+							}
+						}
+
+							
+	
+
+
+	
+	}
+
+
+				
+	
+	function slowstop(horse){
+
+		var hspeed = horse.speed
+			
+		horse.speed -= 1;
+		
+		horse.duration += 2;
+
+		
+		return hspeed
+	
+	}
+
+	function areuReady(){ 
+
+		
+		jQuery('#startmodal').click();
+
+		jQuery('#startcont').css({"width":"55%","height":"120%", "margin":"auto"});
+		
+		jQuery('#startcontents').css({"height":"200px"});
+		
+		setInterval(function(){
+			
+			jQuery("#iphone").effect( "shake", {direction: "up"},1100);}, 1000);
+				
+	
+		
+		}
+
+			  
+
+
+		
+  function end() {
+
+		
+		jQuery('#end_modal').click();
+		
+		renderer.clear();
+		
+		var list = getRecordlist(true);
+		
+		jQuery('#end_body').html(list)
+
+		jQuery('#restart').bind("click",function(){
+					 
+			
+			jQuery('.e').modal('hide')
+			
+			location.reload(); 
+			
+			areyouReady();
+
+		
+		});
+
+	
+	}
+
+	
+	
+	function getRecord(obj){
+
+	    
+	    // 이개념을 만드는데 상당한 시간이 소요되었다.
+			// 애니메이션이 동작하기 떄문에 15000이상일때로 설정하면
+			// 딱 그시점부터 계속 프레임리셋이되면서 기록이 동일해지는 문제가있었다.
+			// 따라서 반대로 1500이전일때부터 계속 델타값을 찍고
+			// 15000이 넘었을때는 더이상 프레임을 찍지 않도록하는 방법이다.
+			
+
+			// getDelta() 함수 자체는 방금전 들어온말과 지금들어온말의
+			// 시간차를 리턴하지만, elpasedTime 변수는 이 모든 시간차의 +=이다.
+			// https://github.com/mrdoob/three.js/blob/master/src/core/Clock.js
+
+			if(obj.position.x < 15000){
+
+			     timer.getDelta() 
+					 obj.lap = timer.elapsedTime.toFixed(2); }
+			 
+			 }
+				
+
+
+			 
+
+
+			 
+  function render() {
+		
+		var delta = clock.getDelta();
+	
+		timer.start();
+
+
+		setTimeout(function(){
+
+			for ( var i = 0, leng = morphs.length; i <leng; i++ ) {
+
+				morph = morphs[ i ];
+				
+				morph.updateAnimation( 1000 * delta );
+
+				morph.position.x += morph.speed * delta;
+
+				jQuery('a#count_down').html("SHAKE!").fadeOut("slow");
+			}
+
+			},4000);
+
+		
+    
+     morphs[2].speed = go
+
+		if( morphs[2].speed <= 0) {  morphs[2].speed === 0 }
+
+		//renderer.clear();
+		
+		renderer.render( scene, camera );
+	
+	}
+
+
+
+
+  function getRecordlist(view){
+
+		
+		var laplist = []
+		
+		var tempobj = {}
+		
+		var tags = new String();
+		
+		var a = "<table>";
+			
+		var b = "<tr>";
+			
+	  var c = "</tr>";
+	
+   	var d = "<td>";
+		
+		var e = "</td>";
+	
+	  var f = "</table>";
+
+
+
+	
+	for ( var i = 0, leng = morphs.length; i <leng; i ++ ) {
+
+		laplist[i] = {name : morphs[i].ids, lap : morphs[i].lap} 
+		
+	}
+ // 삽질해서 기록해둔다
+ // sort는 반드시 배열에만해당된다.배열에만!
+ // 즉 객체면 적용되지 않는다. 거참 희안하지만...laplist를 배열로선언하니됨.
+
+	laplist.sort(byProperty("lap"));
+	
+
+	
+	for ( var j = 0, leng = morphs.length; j <leng;  j++ ) {
+
+	  k = j+1
+		
+		var sun = d + k + e
+		
+		var tag = d + laplist[j]["name"] + e
+		
+		var tag2 = d + laplist[j]["lap"] + e
+		
+		var tagt = b + sun + tag + tag2 + c
+		
+		tags += tagt;
+	
+	}
+			
+
+	
+	if(view){
+
+		return a + b + d + "RANK" + e+ d + "NAME" + e + d + "RECORD" + e + c + tags + f
+
+	}
+
+
+	else  { return laplist }
+
+}
+
+
+
+ function joke(){
+ 
+ // 대단하네요...1등하니까 좋아요?.
+
+ // 2등에 만족하시나요
+
+ // 겨우 3등...
+
+ // 살면서 절대 경마하지 마세요
+
+ // 꼴지네요 축하드려요 
+
+
+
+ }
+
+
+
+
+ // 첫화면
+ areuReady()
+
+ //  스타트 버튼 누르면 시작
+ 	jQuery('#start').bind("click",function(){
+			 
+		jQuery('.s').modal('hide')
+		//jQuery('button#quit').click();
+
+			
+
+		init();
+
+		setTimeout(function(){
+		jQuery('a#count_down').fadeIn("slow")}, 3000);
+
+		jQuery('#loading').spin(opts);
+		setTimeout("jQuery('#loading').spin(false)", 4000);
+
+		setTimeout(function()
+		{jQuery('#loading_message').fadeIn("slow")},1000);
+		setTimeout("jQuery('#loading_message').fadeOut()",3000);
+
+
+
+		// init이 완전히 된후에 animate 해야한다
+		setTimeout(function() {animate();}, 4000);
+
+
+		
+
+	
+	});
+		
+			  
+
+
+
+
+		</script>
+
+	</body>
+</html>

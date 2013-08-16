@@ -1,0 +1,285 @@
+﻿<!DOCTYPE html>
+<html>
+	<head>
+		<title>Horse VS Hands</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #000;
+				color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: center;
+				z-index: 100;
+				display:block;
+			}
+			#info a { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
+
+			#iphone { 
+				margin-left : 90px;
+				margin-top: 50px;
+			}	
+		
+		</style>
+
+		
+		<!-- jquery cdn 부분 -->
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+		<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+		<!-- 부트스트랩 cdn 부분 -->
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.0.0-rc1/css/bootstrap.min.css">
+    <!-- Latest compiled and minified JavaScript -->
+		<script src="http://netdna.bootstrapcdn.com/bootstrap/3.0.0-rc1/js/bootstrap.min.js"></script>
+		<script src="lib/js/three.min.js"></script>
+		<script src="lib/js/UnpackDepthRGBAShader.js"></script>
+		<script src="lib/js/Detector.js"></script>
+		<script src="lib/js/stats.min.js"></script>
+		<script src="lib/js/helvetiker_bold.typeface.js"></script>
+		<!-- <script src="/socket.io/socket.io.js"></script> -->
+		<script src="http://localhost:8001/socket"></script>
+
+	</head>
+
+	<body>
+
+  <div id="info">
+		<a>Horse vs Hands</a><br>
+		<a href="http://threejs.org" target="_blank">three.js & Node.js</a> - models by rome and written by <a href="http://facebook.com/fffit">Jihoon Byun(JB)</a> </div>
+
+ <!-- 부트스트랩 모달부분 -->
+ <!-- Modal -->
+  <div class="modal fade s" id="openModal">
+    <div class="modal-dialog">
+      <div class="modal-content" id="opencont">
+        <div class="modal-header">
+          <h4 class="modal-title">어떻게 하나요</h4>
+        </div>
+				<div class="modal-body" id="opencontents">
+						
+         
+
+					<h6>1. 아래의 qr 코드를 스마트폰으로 인식하면 자동으로 PC와 연결합니다.</h6> <p></p>
+					<h6>2. PC와 연결이되면 게임이 시작되며, 스마트폰을 상하로 흔들면 말이 빠르게 달립니다</h6><p></p>
+					<h6>3. 빨리 흔들수록 속도가 빨라집니다 :)</h6>
+
+
+					<img id="qrcode" src="lib/image/qr.jpg">
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" id="openquit" data-dismiss="modal">QUIT</button>
+					
+        </div>
+      </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+  </div><!-- /.modal -->
+
+	<script>
+
+		var serverUrl = 'http://' + location.host;
+		var socket = io.connect(serverUrl);
+		var horse_power = 0;
+		var session_id; 
+
+		// 피시 화면에 레디 화면 보여주기	
+		socket.on('connected', function(data){
+
+			session_id = socket.socket.sessionid
+
+			console.log("핸드쉐이크성공(pc클라이언트)");
+			
+			socket.emit('opening-session', session_id);
+			
+			// 서버로부터 폰이 레디되었음을 받고, 준비화면을 내보낸다
+			socket.on('pcready', function(data){
+
+				
+				// 서버로부터 저장되어있는 세션과 현재 세션이 일치하면
+			  // 게임페이지로 이동한다	
+				if(data == session_id){
+					
+					console.log("폰에서서버에서여기로");
+					jQuery('button#openquit').click();
+					location.href='http://' + location.host + '/index';
+					socket.emit('opening-join');
+				}
+
+
+			});
+		 });
+
+
+    byProperty = function(prop) {
+    return function(a,b) {
+      if (typeof a[prop] == "number") {
+		    return (a[prop] - b[prop]);} 
+	      else {
+           return ((a[prop] < b[prop]) ? -1 : ((a[prop] > b[prop]) ? 1 : 0));
+        }
+      };
+		};
+
+		
+		
+			///////////////////////////////////////////
+			//////////////////////////////////////////
+			////////////////오프닝////////////////////
+			//////////////////////////////////////////
+			/////////////////////////////////////////
+
+
+			Opening = function(){
+	
+	    var container, stats;
+			var open_camera, open_scene, projector, open_renderer;
+			var open_mesh;
+			
+			this.open_init= function() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				var info = document.createElement( 'div' );
+				info.style.position = 'absolute';
+				info.style.top = '500px';
+
+				info.innerHTML = '<a data-toggle="modal" href="#openModal" id="openmodal" class="btn btn-primary btn-lg">START GAME</a>'
+
+				info.style.width = '100%';
+				info.style.textAlign = 'center';
+				container.appendChild( info );
+
+				//
+
+				open_camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 10000 );
+				open_camera.position.y = 300;
+				open_camera.target = new THREE.Vector3( 0, 150, 0 );
+
+				open_scene = new THREE.Scene();
+
+				//
+
+				var open_light = new THREE.DirectionalLight( 0xefefff, 2 );
+			  open_light.position.set( 1, 1, 1 ).normalize();
+				open_scene.add( open_light );
+
+				var open_light = new THREE.DirectionalLight( 0xffefef, 2 );
+				open_light.position.set( -1, -1, -1 ).normalize();
+				open_scene.add( open_light );
+
+				var open_loader = new THREE.JSONLoader( true );
+				open_loader.load( "models/animated/horse.js", function( geometry ) {
+
+					open_mesh = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: 0x606060, morphTargets: true } ) );
+					open_mesh.scale.set( 1.5, 1.5, 1.5 );
+					open_scene.add( open_mesh );
+
+				} );
+
+				//
+
+				open_renderer = new THREE.WebGLRenderer();
+				open_renderer.sortObjects = false;
+				open_renderer.setSize( window.innerWidth, window.innerHeight );
+
+				container.appendChild(open_renderer.domElement);
+
+
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			this.onWindowResize= function() {
+
+				open_camera.aspect = window.innerWidth / window.innerHeight;
+				open_camera.updateProjectionMatrix();
+
+				open_renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			this.open_animate = function(){
+
+				requestAnimationFrame( open_animate );
+
+				render();
+
+			}
+
+			var radius = 600;
+			var theta = 0;
+
+			var duration = 1000;
+			var keyframes = 15, interpolation = duration / keyframes;
+			var lastKeyframe = 0, currentKeyframe = 0;
+
+			this.render=function() {
+
+				theta += 0.1;
+
+				open_camera.position.x = radius * Math.sin( THREE.Math.degToRad( theta ) );
+				open_camera.position.z = radius * Math.cos( THREE.Math.degToRad( theta ) );
+
+				open_camera.lookAt( open_camera.target );
+
+				if ( open_mesh ) {
+
+					// Alternate morph targets
+
+					var time = Date.now() % duration;
+
+					var keyframe = Math.floor( time / interpolation );
+
+					if ( keyframe != currentKeyframe ) {
+
+						open_mesh.morphTargetInfluences[ lastKeyframe ] = 0;
+						open_mesh.morphTargetInfluences[ currentKeyframe ] = 1;
+						open_mesh.morphTargetInfluences[ keyframe ] = 0;
+
+						lastKeyframe = currentKeyframe;
+						currentKeyframe = keyframe;
+
+						// console.log( mesh.morphTargetInfluences );
+
+					}
+
+					open_mesh.morphTargetInfluences[ keyframe ] = ( time % interpolation ) / interpolation;
+					open_mesh.morphTargetInfluences[ lastKeyframe ] = 1 - open_mesh.morphTargetInfluences[ keyframe ];
+
+				}
+
+				open_renderer.render( open_scene, open_camera );
+
+				}
+
+		}	
+
+
+		function openingStart(){
+
+			open_init();
+			open_animate();
+
+			}
+
+			(function(){
+		Opening();
+		openingStart();
+		}());	
+
+
+		</script>
+
+	</body>
+</html>

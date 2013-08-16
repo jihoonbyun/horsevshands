@@ -1,0 +1,220 @@
+﻿<!DOCTYPE html>
+<html>
+	<head>
+		<title>신나게 흔들어주세요:)</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+		<!-- socket io 사이트에선 클라이언트에서 다음과 같이 인클루드하라고 한다.
+		// 그러나 실제로 socket.io.js 는 존재하지 않으며 내부적으로 캐시해서 사용하는 것을 보인다.
+		// socket.io를 다음과 같이 client를 빌드하여 직접 socket.io.js 파일을 생성했다.
+    // npm install socket.io-client
+    // cd node_modules/socket.io-client/bin
+    // node builder
+		// dist 폴더에 socket.io.js 파일이 생성되었다.
+		// 다른 방법으로는 http://nodeqa.com/nodejs_ref/15를 참고한다.
+	  // 그러나 이렇게 절대경로를 인클루드하는것 역시 문제가 생길떄가 있는것 같다
+		-->
+		
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+		<!-- 로컬에선 이렇게 해라
+		<script src="http://localhost:8001/socket"></script> or
+		<script src="modules/socket.io.min.js"></script>	-->
+    <link rel="stylesheet" href="http://code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.css" />
+    <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+    <script src="http://code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.js"></script>
+		<!--	<script src="/socket.io/socket.io.js"></script> -->
+		<script src="http://localhost:8001/socket"></script> 
+  <script>
+
+		
+		// 이벤트 리스너 등록
+		window.addEventListener('devicemotion', deviceMotionHandler, false);
+
+		
+		// 주요변수 정리
+		var browser = {} // 브라우저 정보
+
+		browser.nick = new String;	
+		browser.speed = 0;
+		browser.go = 0;
+		browser.finish = "false";
+		browser.session;
+		browser.ismulti = "false"
+		device_check()
+
+
+		// 클라이언트 소켓 핸스쉐이킹
+		//var socket = io.connect('http://localhost', {port:8001});
+		// 삽질로그
+		// 소켓에 접속하고, 커넥트 되기전에는 세션값을 얻을수가없다
+		// 대신 socket.name 값을 줄수는 있다
+		// 소켓의 세션을 얻기위해선, connect 된 이후에
+		// socket.socket.sessionid 로 해야한다.
+
+		var serverUrl = 'http://' + location.host;
+		var socket = io.connect(serverUrl);
+
+		// socket.name = "아무거나"
+
+				
+		// 핸드 쉐이킹 성공 여부
+		socket.on('connected', function(data){
+
+
+
+
+		// 해당 소켓의 세션아이디를 브라우저 세션값으로 정의한다
+		browser.session = socket.socket.sessionid 
+
+		// 닉네임, 세션 정보( 싱글플레이에선 패스워드 같은 역할임) 보낸다
+		// 멀티플레이에선 닉넴과 세션을, 싱글에선 세션만 보낸다
+		socket.emit('individual', browser);
+
+
+	 // 콘솔확인하기	
+	 console.log("핸드쉐이크성공(클라이언트)");
+
+	 // 클라이언트 화면에 받은 데이터 출력하기
+	 jQuery('#is_connected').html(data.connect);
+
+
+	 // 서버로부터 index클라이언트도 접속 했음을 받고
+	 // 서버에 마력정보를 보낸다. 
+
+   socket.on('gimme-speed', function(){
+
+		 //console.log("브라우저에 마력 전송 준비완료!");
+
+		 //console.log(browser);
+
+	 socket.emit('heres-speed', browser);
+
+ });
+
+ 			 
+ socket.on('dis', function(data){
+
+	    jQuery('#is_connected').html("이런 연결이 끊어졌네요");
+
+			jQuery('#speed_number').html("ㅠ.ㅠ");
+
+	    setTimeout(function(){ 
+		  location.href='http://' + location.host + '/developer';},2000);
+
+	    console.log("끈겻서");
+   });
+
+
+
+ });
+
+
+
+
+
+
+  // 폰호환성 체크
+	function device_check() {
+  
+		if (window.DeviceMotionEvent) {
+    
+			browser.message = "가속센서 기능이 지원됩니다."
+		  browser.name = "chrome or safari"} 
+		
+		else if (window.OrientationEvent) {
+ 
+			browser.message = "MozOrientation 이벤트가 지원됩니다."
+		  browser.name = "firefox"}
+
+		else {
+
+			browser.message = "죄송합니다. 현재 모바일이 아니거나, 지원하지 않는 브라우저입니다";
+		  browser.name = "none" }
+	
+	}
+
+
+
+
+
+	//모션 핸들러
+  // https://github.com/wktzjz/HTML5-JS-Test/blob/master/shake.html
+
+  var SHAKE_THRESHOLD = 800;
+  var lastUpdate = 0;
+  var x, y, z, last_x, last_y, last_z;
+
+  function deviceMotionHandler(eventData) {
+
+  var acceleration = eventData.accelerationIncludingGravity;
+
+  var curTime = new Date().getTime();
+
+  if ((curTime - lastUpdate) > 100) {
+
+      var diffTime = (curTime - lastUpdate);
+      lastUpdate = curTime;
+
+      x = acceleration.x;
+      y = acceleration.y;
+      z = acceleration.z;
+
+      var speed = Math.abs(x+y+z-last_x-last_y-last_z) / diffTime * 10000;
+
+		// 흔들었을떄
+		if (speed > SHAKE_THRESHOLD) {
+			 browser.go = 1;
+			 browser.speed += 8
+			 			 
+			}
+
+	 // 흔들지 않을때		
+	 if (speed < SHAKE_THRESHOLD) {
+		  browser.go = 0;
+			 if(browser.speed >0){
+				 browser.speed -= 5
+			 
+			 if(browser.speed <= 0){
+				 browser.speed === 0;}}
+
+			 if(browser.speed <= 0){
+				 browser.speed === 0;}
+      }
+		
+	
+				// 폰에다가 속도를 찍는다
+			jQuery(document).ready(function(){
+		
+					jQuery('#speed_number').html(browser.speed + "km/h");
+				});
+
+      last_x = x;
+      last_y = y;
+      last_z = z;
+		
+		} 
+	}
+
+
+
+	// 지원여부
+	jQuery('#brmessage').html(browser.message);
+
+
+
+
+			
+
+			 
+</script>
+</head>
+<body>
+
+				 <h1 id="is_connected" style="text-align:center;font-size:60px;">연결여부</h6>
+				 <h1 style="text-align:center" id="brmessage"> </h1>
+		     <h1 id="speed_number" style="font-size:300px;text-align:center"></h1>
+		
+
+	</body>
+</html>
+
